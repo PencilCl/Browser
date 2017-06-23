@@ -1,0 +1,25 @@
+<resources>
+    <string name="app_name">Browser</string>
+
+    <string name="exit_confirm">再次点击返回键退出程序</string>
+
+    <string name="remove">删除</string>
+
+    <string name="addBookmark">收藏</string>
+    <string name="removeBookmark">取消收藏</string>
+    <string name="refresh">刷新</string>
+    <string name="forward">前进</string>
+    <string name="backward">后退</string>
+    <string name="exit">退出</string>
+
+    <string name="confirm">确定</string>
+    <string name="cancel">取消</string>
+
+    <string name="downloader_title">下载管理</string>
+    <string name="downloader_download">正在下载</string>
+    <string name="downloader_downloaded">已下载</string>
+
+    <string name="bookmark_history_title">收藏夹/历史记录</string>
+    <string name="bookmark_history_bookmark">收藏夹</string>
+    <string name="bookmark_history_history">历史记录</string>
+</resources>

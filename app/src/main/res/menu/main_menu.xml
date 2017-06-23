@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+            android:id="@+id/downloader"
+            android:title="@string/downloader_title"/>
+    <item
+            android:id="@+id/bookmarkAndHistory"
+            android:title="@string/bookmark_history_title"/>
+    <item
+            android:id="@+id/mark"
+            android:title="@string/addBookmark"/>
+    <item
+            android:id="@+id/refresh"
+            android:title="@string/refresh"/>
+    <item
+            android:id="@+id/forward"
+            android:title="@string/forward"/>
+    <item
+            android:id="@+id/backward"
+            android:title="@string/backward"/>
+</menu>

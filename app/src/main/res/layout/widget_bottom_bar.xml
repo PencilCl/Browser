@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:app="http://schemas.android.com/apk/res-auto" android:orientation="horizontal"
+              android:layout_width="match_parent"
+              android:layout_height="50dp">
+
+    <ImageButton
+            android:id="@+id/leftButton"
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            app:srcCompat="@drawable/ic_page_1"
+            android:background="@drawable/bg_ripple"
+            android:layout_weight="0.25"
+            android:cropToPadding="true"
+            android:padding="15dp"
+            android:scaleType="centerInside"/>
+
+    <RelativeLayout
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:layout_weight="0.5">
+        <TextView
+                android:id="@+id/centerText"
+                android:text="Google"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" android:textStyle="normal|bold" android:textSize="14sp"
+                android:gravity="center" android:textColor="@android:color/black" android:visibility="gone"
+                android:singleLine="true" android:ellipsize="marquee"/>
+        <ImageButton
+                android:id="@+id/centerButton"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:srcCompat="@drawable/ic_arrow_up"
+                android:background="@drawable/bg_ripple"
+                android:cropToPadding="true"
+                android:padding="10dp"
+                android:scaleType="centerInside"
+                android:layout_alignParentTop="true" android:layout_alignParentStart="true"/>
+    </RelativeLayout>
+
+
+    <ImageButton
+            android:id="@+id/rightButton"
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            app:srcCompat="@drawable/ic_menu"
+            android:background="@drawable/bg_ripple"
+            android:layout_weight="0.25"
+            android:cropToPadding="true"
+            android:padding="18dp"
+            android:scaleType="centerInside"/>
+</LinearLayout>

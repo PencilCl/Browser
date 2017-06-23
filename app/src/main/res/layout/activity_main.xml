@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto" xmlns:tools="http://schemas.android.com/tools"
+        android:id="@+id/activity_main"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:context="cn.pencilsky.browser.MainActivity">
+
+    <android.support.v4.widget.SwipeRefreshLayout
+            android:id="@+id/swipeRefreshLayout"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginBottom="50dp">
+        <WebView
+                android:id="@+id/webView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"/>
+    </android.support.v4.widget.SwipeRefreshLayout>
+
+    <RelativeLayout
+            android:id="@+id/homePage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:layout_centerInParent="true">
+        <TextView
+                android:id="@+id/title"
+                android:text="@string/app_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@android:color/black"
+                android:textSize="30sp"
+                android:layout_centerHorizontal="true"/>
+        <AutoCompleteTextView
+                android:id="@+id/input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@+id/title"
+                android:layout_marginTop="20dp"
+                android:inputType="textUri"
+                android:ems="10"
+                android:background="@drawable/bg_input"
+                android:textSize="24sp"
+                android:imeOptions="actionSearch"
+                android:paddingStart="30dp"
+                android:paddingEnd="50dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp" android:selectAllOnFocus="true"/>
+        <ImageButton
+                android:id="@+id/scan"
+                android:layout_width="50dp"
+                android:layout_height="50dp"
+                app:srcCompat="@drawable/ic_scan"
+                android:layout_alignEnd="@+id/input"
+                android:layout_alignBottom="@+id/input"
+                android:scaleType="centerInside"
+                android:background="@android:color/transparent"
+                android:padding="15dp"/>
+        <android.support.v7.widget.RecyclerView
+                android:id="@+id/bookmark"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:layout_below="@+id/input"/>
+    </RelativeLayout>
+
+    <cn.pencilsky.browser.widget.BottomBar
+            android:id="@+id/bottomBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true" android:layout_alignParentStart="true"/>
+    <ProgressBar
+            android:id="@+id/progressBar"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_above="@+id/bottomBar"
+            android:layout_marginBottom="-6dp"
+            android:max="100"
+            android:elevation="17dp"/>
+</RelativeLayout>
