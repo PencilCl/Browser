@@ -3,6 +3,8 @@ package cn.pencilsky.browser;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.net.MailTo;
+import android.net.Uri;
 import android.os.Environment;
 import android.os.Message;
 import android.support.v4.widget.SwipeRefreshLayout;
@@ -510,6 +512,31 @@ public class MainActivity extends AppCompatActivity implements
 
                         }
                     });
+        }
+
+        /**
+         * 捕获 mail to 链接
+         * 启动发送邮件activity
+         * @param view
+         * @param url
+         * @return
+         */
+        @Override
+        public boolean shouldOverrideUrlLoading(WebView view, String url) {
+            if (url.startsWith("mailto:")) {
+                // 启动发送邮件
+                MailTo mt = MailTo.parse(url);
+                Intent i = new Intent(Intent.ACTION_SENDTO);
+                i.setData(Uri.parse(url));
+                i.putExtra(Intent.EXTRA_SUBJECT, mt.getSubject());
+                i.putExtra(Intent.EXTRA_TEXT, mt.getBody());
+                MainActivity.this.startActivity(i);
+                view.reload();
+                return true;
+            }
+
+            view.loadUrl(url);
+            return true;
         }
     }
 
