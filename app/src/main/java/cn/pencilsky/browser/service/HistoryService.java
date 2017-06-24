@@ -40,6 +40,7 @@ public class HistoryService {
                         );
                         histories.add(history);
                     }
+                    db.close();
                     cursor.close();
                 }
                 e.onNext(histories);
@@ -84,6 +85,7 @@ public class HistoryService {
                     // 如果已保存到数据库中，则需要在数据库中删除
                     SQLiteDatabase db = DBHelper.getDB(context);
                     db.delete("history", "id=?", new String[]{String.valueOf(history.getId())});
+                    db.close();
                 }
 
                 if (histories != null) {
@@ -106,6 +108,7 @@ public class HistoryService {
                 if (histories != null) {
                     histories.clear();
                 }
+                db.close();
                 e.onNext("");
             }
         }).subscribeOn(Schedulers.io());
@@ -129,6 +132,8 @@ public class HistoryService {
             newHistories.remove(saveHistory);
             saveHistory.setId(lastId);
         }
+
+        db.close();
     }
 
 

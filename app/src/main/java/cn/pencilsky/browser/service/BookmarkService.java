@@ -42,6 +42,7 @@ public class BookmarkService {
                         bookmarks.add(bookmark);
                     }
                     cursor.close();
+                    db.close();
                 }
                 e.onNext(bookmarks);
             }
@@ -73,6 +74,7 @@ public class BookmarkService {
                 int lastId = 0;
                 if (cursor.moveToFirst()) lastId = cursor.getInt(0);
                 cursor.close();
+                db.close();
 
                 if (lastId == 0) {
                     e.onNext("添加收藏失败");
@@ -100,6 +102,7 @@ public class BookmarkService {
                 if (bookmarks != null) {
                     bookmarks.remove(bookmark);
                 }
+                db.close();
                 e.onNext("");
             }
         }).subscribeOn(Schedulers.io());

@@ -46,6 +46,7 @@ public class DownloadService {
                         downloads.add(download);
                     }
                     cursor.close();
+                    db.close();
                 }
                 e.onNext(downloads);
             }
@@ -79,6 +80,7 @@ public class DownloadService {
                 int lastId = 0;
                 if (cursor.moveToFirst()) lastId = cursor.getInt(0);
                 cursor.close();
+                db.close();
 
                 if (lastId == 0) {
                     e.onNext("新建下载失败");
@@ -106,6 +108,7 @@ public class DownloadService {
                 if (downloads != null) {
                     downloads.remove(download);
                 }
+                db.close();
                 e.onNext("");
             }
         }).subscribeOn(Schedulers.io());
@@ -131,6 +134,7 @@ public class DownloadService {
                 cv.put("status", download.getStatus());
                 db.update("download", cv, "id=?", new String[]{String.valueOf(download.getId())});
 
+                db.close();
                 // 更新goals数组信息
                 e.onNext("");
             }
