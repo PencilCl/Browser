@@ -29,7 +29,6 @@ import java.util.ArrayList;
  * Created by chenlin on 19/06/2017.
  */
 public class BookmarkAndHistoryActivity extends AppCompatActivity {
-    final public static int REQUEST_CODE = 10001;
     final public static int RESULT_CODE_OPEN_URL = 10002;
     final public static int RESULT_CODE_NOTHING = 10003;
 

@@ -34,6 +34,7 @@ import cn.pencilsky.browser.util.CommonUtil;
 import cn.pencilsky.browser.util.SearchSuggestionHandler;
 import cn.pencilsky.browser.util.ToastUtil;
 import cn.pencilsky.browser.widget.BottomBar;
+import cn.pencilsky.browser.zxing.activity.CaptureActivity;
 import com.lzy.okgo.OkGo;
 import com.lzy.okgo.convert.StringConvert;
 import com.lzy.okgo.model.Response;
@@ -50,7 +51,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class MainActivity extends AppCompatActivity implements
-        BookmarkRecyclerAdapter.OnItemClickListener, View.OnClickListener,
+        BookmarkRecyclerAdapter.OnItemClickListener,
         BottomBar.OnClickListener, PopupMenu.OnMenuItemClickListener {
     @Bind(R.id.input)
     AutoCompleteTextView input;
@@ -78,9 +79,12 @@ public class MainActivity extends AppCompatActivity implements
     String currentUrl; // 记录当前访问url
 
     static String DOWNLOAD_PATH;
-    static final int DOWNLOAD_THREAD_NUM = 5;
+    static final int DOWNLOAD_THREAD_NUM = 5; // 多线程下载线程数
 
     static Pattern linkPattern = Pattern.compile("^(((ht|f)tps?)://)?[\\w\\-]+(\\.[\\w\\-]+)+([\\w\\-.,@?^=%&:/~+#]*[\\w\\-@?^=%&/~+#])?$");
+
+    final public static int REQUEST_BOOKMARK_HISTORY_CODE = 10001;
+    final public static int REQUEST_QRCODE_CODE = 10002;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -93,6 +97,9 @@ public class MainActivity extends AppCompatActivity implements
         init();
     }
 
+    /**
+     * 初始化相关变量以及添加相关监听器
+     */
     private void init() {
         exitNext = false;
         switchToHomePage();
@@ -104,34 +111,269 @@ public class MainActivity extends AppCompatActivity implements
             }
         });
 
-        scan.setOnClickListener(this);
-        bottomBar.setOnClickListener((BottomBar.OnClickListener) this);
+        bottomBar.setOnClickListener(this);
 
+        initScan();
         initInput();
         initBookmark();
         initWebView();
     }
 
+    /**
+     * 处理点击首页上的书签
+     * 点击书签后跳转到书签所指向的url
+     * @param position
+     * @param model
+     */
+    @Override
+    public void onItemClick(int position, Bookmark model) {
+        switchToWebView();
+        webView.loadUrl(model.getLink());
+    }
+
+    @Override
+    public void onClickLeft(View view) {
+
+    }
+
+    @Override
+    public void onClickCenter(View view) {
+        if (progressBar.getVisibility() == View.VISIBLE) {
+            // WebView 正在加载，则停止加载
+            webView.stopLoading();
+        } else if (!inHomepage) {
+            switchToHomePage();
+            input.requestFocus();
+            // 显示软键盘
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.toggleSoftInput(0, InputMethodManager.SHOW_FORCED);
+        }
+    }
+
+    /**
+     * BottomBar 右边被点击事件
+     * 弹出主菜单
+     * @param view
+     */
+    @Override
+    public void onClickRight(View view) {
+        PopupMenu popupMenu = new PopupMenu(this, view);
+        popupMenu.getMenuInflater()
+                .inflate(R.menu.main_menu, popupMenu.getMenu());
+        Menu menu = popupMenu.getMenu();
+        if (!inHomepage) {
+            menu.getItem(2).setTitle(R.string.addBookmark);
+            for (Bookmark bookmark : BookmarkService.bookmarks) {
+                if (bookmark.getLink().equals(currentUrl)) {
+                    menu.getItem(2).setTitle(R.string.removeBookmark);
+                }
+            }
+        }
+        menu.getItem(2).setVisible(!inHomepage);
+        menu.getItem(3).setVisible(!inHomepage);
+        menu.getItem(4).setEnabled(webView.canGoForward());
+        menu.getItem(5).setEnabled(webView.canGoBack() || !inHomepage);
+        popupMenu.setOnMenuItemClickListener(this);
+        popupMenu.show();
+    }
+
+    @Override
+    public boolean onLongClickLeft(View view) {
+        return false;
+    }
+
+    @Override
+    public boolean onLongClickCenter(View view) {
+        return false;
+    }
+
+    @Override
+    public boolean onLongClickRight(View view) {
+        return false;
+    }
+
+    /**
+     * 处理主菜单点击事件
+     * @param item
+     * @return
+     */
+    @Override
+    public boolean onMenuItemClick(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.downloader:
+                startActivity(new Intent(MainActivity.this, DownloaderActivity.class));
+                break;
+            case R.id.bookmarkAndHistory:
+                startActivityForResult(new Intent(MainActivity.this, BookmarkAndHistoryActivity.class), REQUEST_BOOKMARK_HISTORY_CODE);
+                break;
+            case R.id.backward:
+                onBackPressed();
+                break;
+            case R.id.forward:
+                if (inHomepage) {
+                    switchToWebView();
+                } else {
+                    webView.goForward();
+                }
+                break;
+            case R.id.mark:
+                markCurrentUrl();
+                break;
+            case R.id.refresh:
+                webView.reload();
+                break;
+        }
+        return true;
+    }
+
+    /**
+     * 覆盖onBackPressed方法
+     * 支持当浏览器可以后退时，执行后退方法
+     * 支持2s后再次点击返回键再退出程序
+     */
+    @Override
+    public void onBackPressed() {
+        if (webView.canGoBack()) {
+            webView.goBack();
+        } else {
+            if (inHomepage) {
+                if (exitNext) {
+                    super.onBackPressed();
+                } else {
+                    exitNext = true;
+                    ToastUtil.showShort(this, R.string.exit_confirm);
+
+                    // 2s 后重新设置exitNext为false;
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                Thread.sleep(2000);
+                            } catch (InterruptedException e) {
+                                e.printStackTrace();
+                            }
+                            exitNext = false;
+                        }
+                    }).start();
+                }
+            } else {
+                switchToHomePage();
+                webView.stopLoading();
+                bottomBar.setCenterImg(R.drawable.ic_arrow_up);
+            }
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        ButterKnife.unbind(this);
+
+        // 退出前对未保存的历史记录进行保存
+        HistoryService.saveHistory(this);
+    }
+
+    /**
+     * 处理点击收藏菜单事件
+     * 如果当前url未被收藏 则收藏
+     * 否则取消收藏
+     */
+    private void markCurrentUrl() {
+        BookmarkService.getBookmarks(this)
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Consumer<ArrayList<Bookmark>>() {
+                    @Override
+                    public void accept(ArrayList<Bookmark> bookmarks) throws Exception {
+                        for (Bookmark bookmark : bookmarks) {
+                            if (bookmark.getLink().equals(currentUrl)) {
+                                // 取消收藏
+                                removeBookmark(bookmark);
+                                return ;
+                            }
+                        }
+                        // 收藏
+                        addCurrentToBookmark();
+                    }
+                });
+    }
+
+    /**
+     * 将当前网页从收藏夹中移除
+     * @param bookmark
+     */
+    private void removeBookmark(Bookmark bookmark) {
+        BookmarkService.removeBookmark(this, bookmark)
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Consumer<String>() {
+                    @Override
+                    public void accept(String s) throws Exception {
+                        ToastUtil.showShort(MainActivity.this, "".equals(s) ? "取消收藏成功" : "取消收藏失败");
+                    }
+                });
+    }
+
+    /**
+     * 将当前网页添加到收藏夹中
+     */
+    private void addCurrentToBookmark() {
+        BookmarkService.addBookmark(MainActivity.this, new Bookmark(-1, R.drawable.ic_website, bottomBar.getCenterText().toString(), currentUrl))
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Consumer<String>() {
+                    @Override
+                    public void accept(String s) throws Exception {
+                        ToastUtil.showShort(MainActivity.this, "".equals(s) ? "收藏成功" : "收藏失败");
+                    }
+                });
+    }
+
+    /**
+     * 处理切换到主界面的一些设置
+     */
+    private void switchToHomePage() {
+        inHomepage = true;
+        swipeRefreshLayout.setVisibility(View.GONE);
+        homePage.setVisibility(View.VISIBLE);
+    }
+
+    /**
+     * 处理切换到WebView的一些设置
+     */
+    private void switchToWebView() {
+        inHomepage = false;
+        swipeRefreshLayout.setVisibility(View.VISIBLE);
+        homePage.setVisibility(View.GONE);
+    }
+
+
+    /**
+     * 初始化点击搜索栏右边的扫描二维码按钮
+     * 监听按钮点击事件，点击事件后跳转到二维码扫描界面
+     */
+    private void initScan() {
+        scan.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivityForResult(new Intent(MainActivity.this, CaptureActivity.class), REQUEST_QRCODE_CODE);
+            }
+        });
+    }
+
+    /**
+     * 初始化搜索输入框
+     * 监听输入框添加点击键盘搜索按钮 当点击搜索按钮时进行搜索操作
+     * 监听输入框文本变化 当输入框文本变化时，进行获取推荐搜索词
+     */
     private void initInput() {
         input.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
                 if (actionId == EditorInfo.IME_ACTION_SEARCH){
                     // 处理用户点击键盘上的搜索功能
-
                     // 隐藏软键盘
                     InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
                     imm.toggleSoftInput(0, InputMethodManager.HIDE_NOT_ALWAYS);
 
-                    switchToWebView();
-
-                    String inputContent = input.getText().toString();
-                    // 如果输入内容为链接，则直接跳转到链接
-                    if (linkPattern.matcher(inputContent).find()) {
-                        webView.loadUrl(inputContent);
-                    } else { // 否则使用百度搜索
-                        webView.loadUrl(String.format("https://www.baidu.com/s?ie=utf-8&wd=%s", input.getText().toString()));
-                    }
+                    handleSearchContent(input.getText().toString());
                     return true;
                 }
                 return false;
@@ -212,6 +454,9 @@ public class MainActivity extends AppCompatActivity implements
         });
     }
 
+    /**
+     * 初始化首页显示的书签
+     */
     private void initBookmark() {
         //设置布局管理器
         StaggeredGridLayoutManager layoutManager = new StaggeredGridLayoutManager(5, StaggeredGridLayoutManager.VERTICAL);
@@ -231,6 +476,12 @@ public class MainActivity extends AppCompatActivity implements
                 });
     }
 
+    /**
+     * 初始化WebView
+     * 设置支持js、支持缩放
+     * 监听浏览器下载事件，捕获下载消息，并利用当前应用进行下载
+     * 监听浏览器滚动事件 解决与SwipeRefreshLayout滑动冲突问题
+     */
     private void initWebView() {
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -259,7 +510,7 @@ public class MainActivity extends AppCompatActivity implements
             }
         });
 
-         // 监听scroll事件，解决与swipeRefreshLayout滑动冲突问题
+        // 监听scroll事件，解决与swipeRefreshLayout滑动冲突问题
         webView.setOnScrollChangeListener(new View.OnScrollChangeListener() {
             @Override
             public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
@@ -272,196 +523,25 @@ public class MainActivity extends AppCompatActivity implements
         });
     }
 
-    @Override
-    public void onItemClick(int position, Bookmark model) {
+    private void handleSearchContent(String content) {
         switchToWebView();
-        webView.loadUrl(model.getLink());
-    }
 
-    @Override
-    public void onClick(View v) {
-        switch (v.getId()) {
-            case R.id.scan:
-                System.out.println("scanning binary code");
-                break;
+        // 如果输入内容为链接，则直接跳转到链接
+        if (linkPattern.matcher(content).find()) {
+            webView.loadUrl(content);
+        } else { // 否则使用百度搜索
+            webView.loadUrl(String.format("https://www.baidu.com/s?ie=utf-8&wd=%s", input.getText().toString()));
         }
-    }
-
-    @Override
-    public void onClickLeft(View view) {
-
-    }
-
-    @Override
-    public void onClickCenter(View view) {
-        if (progressBar.getVisibility() == View.VISIBLE) {
-            // WebView 正在加载，则停止加载
-            webView.stopLoading();
-        } else if (!inHomepage) {
-            switchToHomePage();
-            input.requestFocus();
-            // 显示软键盘
-            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-            imm.toggleSoftInput(0, InputMethodManager.SHOW_FORCED);
-        }
-    }
-
-    /**
-     * BottomBar 右边被点击事件
-     * 弹出主菜单
-     * @param view
-     */
-    @Override
-    public void onClickRight(View view) {
-        PopupMenu popupMenu = new PopupMenu(this, view);
-        popupMenu.getMenuInflater()
-                .inflate(R.menu.main_menu, popupMenu.getMenu());
-        Menu menu = popupMenu.getMenu();
-        if (!inHomepage) {
-            menu.getItem(2).setTitle(R.string.addBookmark);
-            for (Bookmark bookmark : BookmarkService.bookmarks) {
-                if (bookmark.getLink().equals(currentUrl)) {
-                    menu.getItem(2).setTitle(R.string.removeBookmark);
-                }
-            }
-        }
-        menu.getItem(2).setVisible(!inHomepage);
-        menu.getItem(3).setVisible(!inHomepage);
-        menu.getItem(4).setEnabled(webView.canGoForward());
-        menu.getItem(5).setEnabled(webView.canGoBack() || !inHomepage);
-        popupMenu.setOnMenuItemClickListener(this);
-        popupMenu.show();
-    }
-
-    @Override
-    public boolean onLongClickLeft(View view) {
-        return false;
-    }
-
-    @Override
-    public boolean onLongClickCenter(View view) {
-        return false;
-    }
-
-    @Override
-    public boolean onLongClickRight(View view) {
-        return false;
-    }
-
-    /**
-     * 处理主菜单点击事件
-     * @param item
-     * @return
-     */
-    @Override
-    public boolean onMenuItemClick(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.downloader:
-                startActivity(new Intent(MainActivity.this, DownloaderActivity.class));
-                break;
-            case R.id.bookmarkAndHistory:
-                startActivityForResult(new Intent(MainActivity.this, BookmarkAndHistoryActivity.class), BookmarkAndHistoryActivity.REQUEST_CODE);
-                break;
-            case R.id.backward:
-                onBackPressed();
-                break;
-            case R.id.forward:
-                if (inHomepage) {
-                    switchToWebView();
-                } else {
-                    webView.goForward();
-                }
-                break;
-            case R.id.mark:
-                markCurrentUrl();
-                break;
-            case R.id.refresh:
-                webView.reload();
-                break;
-        }
-        return true;
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        ButterKnife.unbind(this);
-
-        // 退出前对未保存的历史记录进行保存
-        HistoryService.saveHistory(this);
-    }
-
-    /**
-     * 处理点击收藏菜单事件
-     * 如果当前url未被收藏 则收藏
-     * 否则取消收藏
-     */
-    private void markCurrentUrl() {
-        BookmarkService.getBookmarks(this)
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<ArrayList<Bookmark>>() {
-                    @Override
-                    public void accept(ArrayList<Bookmark> bookmarks) throws Exception {
-                        for (Bookmark bookmark : bookmarks) {
-                            if (bookmark.getLink().equals(currentUrl)) {
-                                // 取消收藏
-                                removeBookmark(bookmark);
-                                return ;
-                            }
-                        }
-                        // 收藏
-                        addCurrentToBookmark();
-                    }
-                });
-    }
-
-    /**
-     * 将当前网页从收藏夹中移除
-     * @param bookmark
-     */
-    private void removeBookmark(Bookmark bookmark) {
-        BookmarkService.removeBookmark(this, bookmark)
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<String>() {
-                    @Override
-                    public void accept(String s) throws Exception {
-                        ToastUtil.showShort(MainActivity.this, "".equals(s) ? "取消收藏成功" : "取消收藏失败");
-                    }
-                });
-    }
-
-    /**
-     * 将当前网页添加到收藏夹中
-     */
-    private void addCurrentToBookmark() {
-        BookmarkService.addBookmark(MainActivity.this, new Bookmark(-1, R.drawable.ic_website, bottomBar.getCenterText().toString(), currentUrl))
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Consumer<String>() {
-                    @Override
-                    public void accept(String s) throws Exception {
-                        ToastUtil.showShort(MainActivity.this, "".equals(s) ? "收藏成功" : "收藏失败");
-                    }
-                });
-    }
-
-    private void switchToHomePage() {
-        inHomepage = true;
-        swipeRefreshLayout.setVisibility(View.GONE);
-        homePage.setVisibility(View.VISIBLE);
-    }
-
-    private void switchToWebView() {
-        inHomepage = false;
-        swipeRefreshLayout.setVisibility(View.VISIBLE);
-        homePage.setVisibility(View.GONE);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == BookmarkAndHistoryActivity.REQUEST_CODE && resultCode == BookmarkAndHistoryActivity.RESULT_CODE_OPEN_URL) {
+        if (requestCode == REQUEST_BOOKMARK_HISTORY_CODE && resultCode == BookmarkAndHistoryActivity.RESULT_CODE_OPEN_URL) {
             // 打开在收藏夹/历史记录中点击的链接
             switchToWebView();
             webView.loadUrl(data.getStringExtra("url"));
+        } else if (requestCode == REQUEST_QRCODE_CODE && resultCode == CaptureActivity.RESULT_SCAN_SUCCESS) {
+            handleSearchContent(data.getStringExtra("result"));
         }
     }
 
@@ -535,41 +615,8 @@ public class MainActivity extends AppCompatActivity implements
                 return true;
             }
 
-            view.loadUrl(url);
-            return true;
-        }
-    }
-
-    @Override
-    public void onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack();
-        } else {
-            if (inHomepage) {
-                if (exitNext) {
-                    super.onBackPressed();
-                } else {
-                    exitNext = true;
-                    ToastUtil.showShort(this, R.string.exit_confirm);
-
-                    // 2s 后重新设置exitNext为false;
-                    new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            try {
-                                Thread.sleep(2000);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                            exitNext = false;
-                        }
-                    }).start();
-                }
-            } else {
-                switchToHomePage();
-                webView.stopLoading();
-                bottomBar.setCenterImg(R.drawable.ic_arrow_up);
-            }
+//            view.loadUrl(url);
+            return false;
         }
     }
 }
