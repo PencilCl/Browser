@@ -83,8 +83,10 @@ public class MainActivity extends AppCompatActivity implements
 
     static Pattern linkPattern = Pattern.compile("^(((ht|f)tps?)://)?[\\w\\-]+(\\.[\\w\\-]+)+([\\w\\-.,@?^=%&:/~+#]*[\\w\\-@?^=%&/~+#])?$");
 
-    final public static int REQUEST_BOOKMARK_HISTORY_CODE = 10001;
-    final public static int REQUEST_QRCODE_CODE = 10002;
+    final private static int REQUEST_BOOKMARK_HISTORY_CODE = 10001;
+    final private static int REQUEST_QRCODE_CODE = 10002;
+
+    final private static String blankPage = "about:blank";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -142,7 +144,7 @@ public class MainActivity extends AppCompatActivity implements
             // WebView 正在加载，则停止加载
             webView.stopLoading();
         } else if (!inHomepage) {
-            switchToHomePage();
+            webView.loadUrl(blankPage);
             input.requestFocus();
             // 显示软键盘
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -333,6 +335,7 @@ public class MainActivity extends AppCompatActivity implements
         inHomepage = true;
         swipeRefreshLayout.setVisibility(View.GONE);
         homePage.setVisibility(View.VISIBLE);
+        bottomBar.setCenterImg(R.drawable.ic_arrow_up);
     }
 
     /**
@@ -521,10 +524,12 @@ public class MainActivity extends AppCompatActivity implements
                 }
             }
         });
+
+        webView.loadUrl(blankPage);
     }
 
     private void handleSearchContent(String content) {
-        switchToWebView();
+//        switchToWebView();
 
         // 如果输入内容为链接，则直接跳转到链接
         if (linkPattern.matcher(content).find()) {
@@ -538,7 +543,6 @@ public class MainActivity extends AppCompatActivity implements
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_BOOKMARK_HISTORY_CODE && resultCode == BookmarkAndHistoryActivity.RESULT_CODE_OPEN_URL) {
             // 打开在收藏夹/历史记录中点击的链接
-            switchToWebView();
             webView.loadUrl(data.getStringExtra("url"));
         } else if (requestCode == REQUEST_QRCODE_CODE && resultCode == CaptureActivity.RESULT_SCAN_SUCCESS) {
             handleSearchContent(data.getStringExtra("result"));
@@ -568,6 +572,7 @@ public class MainActivity extends AppCompatActivity implements
         @Override
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
+
             progressBar.setVisibility(View.GONE);
             if (swipeRefreshLayout.isRefreshing()) {
                 swipeRefreshLayout.setRefreshing(false);
@@ -576,6 +581,13 @@ public class MainActivity extends AppCompatActivity implements
             if (inHomepage) {
                 return ;
             }
+
+            // 跳转到空白页则返回到主页
+            if (blankPage.equals(url)) {
+                switchToHomePage();
+                return ;
+            }
+
             // 获取页面标题
             view.evaluateJavascript("document.title", new ValueCallback<String>() {
                 @Override
