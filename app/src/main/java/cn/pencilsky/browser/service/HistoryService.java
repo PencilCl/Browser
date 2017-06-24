@@ -27,21 +27,7 @@ public class HistoryService {
             public void subscribe(ObservableEmitter<ArrayList<History>> e) throws Exception {
                 if (histories == null) {
                     histories = new ArrayList<>();
-                    // 从本地数据库中载入
-                    SQLiteDatabase db = DBHelper.getDB(context);
-                    Cursor cursor = db.query("history", null, null, null, null, null, null);
-
-                    int idIndex = cursor.getColumnIndex("id");
-                    int urlIndex = cursor.getColumnIndex("url");
-                    while (cursor.moveToNext()) {
-                        History history = new History(
-                                cursor.getInt(idIndex),
-                                cursor.getString(urlIndex)
-                        );
-                        histories.add(history);
-                    }
-                    db.close();
-                    cursor.close();
+                    loadLocalDatabaseData(context);
                 }
                 e.onNext(histories);
             }
@@ -54,6 +40,7 @@ public class HistoryService {
             public void subscribe(ObservableEmitter<String> e) throws Exception {
                 if (histories == null) {
                     histories = new ArrayList<>();
+                    loadLocalDatabaseData(context);
                 }
                 if (newHistories == null) {
                     newHistories = new ArrayList<>();
@@ -149,5 +136,27 @@ public class HistoryService {
             }
         }
         return false;
+    }
+
+    /**
+     * 从本地数据库中加载数据
+     * @param context
+     */
+    synchronized private static void loadLocalDatabaseData(Context context) {
+        // 从本地数据库中载入
+        SQLiteDatabase db = DBHelper.getDB(context);
+        Cursor cursor = db.query("history", null, null, null, null, null, null);
+
+        int idIndex = cursor.getColumnIndex("id");
+        int urlIndex = cursor.getColumnIndex("url");
+        while (cursor.moveToNext()) {
+            History history = new History(
+                    cursor.getInt(idIndex),
+                    cursor.getString(urlIndex)
+            );
+            histories.add(history);
+        }
+        db.close();
+        cursor.close();
     }
 }

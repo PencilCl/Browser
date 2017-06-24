@@ -24,29 +24,7 @@ public class DownloadService {
             public void subscribe(ObservableEmitter<ArrayList<Download>> e) throws Exception {
                 if (downloads == null) {
                     downloads = new ArrayList<>();
-                    // 从本地数据库中载入
-                    SQLiteDatabase db = DBHelper.getDB(context);
-                    Cursor cursor = db.query("download", null, null, null, null, null, null);
-
-                    int idIndex = cursor.getColumnIndex("id");
-                    int urlIndex = cursor.getColumnIndex("url");
-                    int fileNameIndex = cursor.getColumnIndex("fileName");
-                    int fileSizeIndex = cursor.getColumnIndex("fileSize");
-                    int downloadedSizeIndex = cursor.getColumnIndex("downloadedSize");
-                    int statusIndex = cursor.getColumnIndex("status");
-                    while (cursor.moveToNext()) {
-                        Download download = new Download(
-                                cursor.getInt(idIndex),
-                                cursor.getString(urlIndex),
-                                cursor.getString(fileNameIndex),
-                                cursor.getInt(fileSizeIndex),
-                                cursor.getInt(downloadedSizeIndex),
-                                cursor.getInt(statusIndex)
-                        );
-                        downloads.add(download);
-                    }
-                    cursor.close();
-                    db.close();
+                    loadLocalDatabaseData(context);
                 }
                 e.onNext(downloads);
             }
@@ -65,6 +43,7 @@ public class DownloadService {
             public void subscribe(ObservableEmitter<String> e) throws Exception {
                 if (downloads == null) {
                     downloads = new ArrayList<>();
+                    loadLocalDatabaseData(context);
                 }
 
                 SQLiteDatabase db = DBHelper.getDB(context);
@@ -139,5 +118,35 @@ public class DownloadService {
                 e.onNext("");
             }
         }).subscribeOn(Schedulers.io());
+    }
+
+    /**
+     * 从本地数据库加载数据
+     * @param context
+     */
+    synchronized private static void loadLocalDatabaseData(Context context) {
+        // 从本地数据库中载入
+        SQLiteDatabase db = DBHelper.getDB(context);
+        Cursor cursor = db.query("download", null, null, null, null, null, null);
+
+        int idIndex = cursor.getColumnIndex("id");
+        int urlIndex = cursor.getColumnIndex("url");
+        int fileNameIndex = cursor.getColumnIndex("fileName");
+        int fileSizeIndex = cursor.getColumnIndex("fileSize");
+        int downloadedSizeIndex = cursor.getColumnIndex("downloadedSize");
+        int statusIndex = cursor.getColumnIndex("status");
+        while (cursor.moveToNext()) {
+            Download download = new Download(
+                    cursor.getInt(idIndex),
+                    cursor.getString(urlIndex),
+                    cursor.getString(fileNameIndex),
+                    cursor.getInt(fileSizeIndex),
+                    cursor.getInt(downloadedSizeIndex),
+                    cursor.getInt(statusIndex)
+            );
+            downloads.add(download);
+        }
+        cursor.close();
+        db.close();
     }
 }
