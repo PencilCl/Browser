@@ -507,6 +507,8 @@ public class MainActivity extends AppCompatActivity implements
                 } else {
                     filename = CommonUtil.getFileNameFromUrl(url);
                 }
+                filename = CommonUtil.addExtendName(filename, mimetype);
+                System.out.println(filename);
                 // 开始下载
                 new Downloader(url, DOWNLOAD_PATH + filename, contentLength, 0, DOWNLOAD_THREAD_NUM, MainActivity.this).start();
                 ToastUtil.showShort(MainActivity.this, String.format("开始下载文件 %s", filename));

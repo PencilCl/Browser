@@ -130,7 +130,7 @@ public class DownloadService {
                 cv.put("url", download.getUrl());
                 cv.put("fileName", download.getFileName());
                 cv.put("fileSize", download.getFileSize());
-                cv.put("downloadedSize", download.getDownloadedSize());
+                cv.put("downloadedSize", download.getStatus() == Download.DOWNLOADED ? download.getFileSize() : 0); // 如果文件尚未下载完，则设置已下载长度为0
                 cv.put("status", download.getStatus());
                 db.update("download", cv, "id=?", new String[]{String.valueOf(download.getId())});
 
