@@ -492,6 +492,18 @@ public class MainActivity extends AppCompatActivity implements
         settings.setSupportZoom(true);
         settings.setBuiltInZoomControls(true);
         settings.setDisplayZoomControls(false);
+        // 设置缓存模式
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        // 开启 DOM storage API功能
+        settings.setDomStorageEnabled(true);
+        // 开启 database storage API功能
+        settings.setDatabaseEnabled(true);
+        String cacheDirPath = getExternalCacheDir().getAbsolutePath();
+        //设置  Application Caches 缓存目录
+        settings.setAppCachePath(cacheDirPath);
+        //开启 Application Caches 功能
+        settings.setAppCacheEnabled(true);
+
         webView.setWebChromeClient(new MyWebChromeClient());
         webView.setWebViewClient(new MyWebViewClient());
         webView.setDownloadListener(new DownloadListener() {
