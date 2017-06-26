@@ -145,6 +145,7 @@ public class MainActivity extends AppCompatActivity implements
             webView.stopLoading();
         } else if (!inHomepage) {
             webView.loadUrl(blankPage);
+            input.setText(currentUrl); // 显示当前网页地址
             input.requestFocus();
             // 显示软键盘
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
